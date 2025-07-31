@@ -1,6 +1,9 @@
 # Whaletop
 Docker + noVNC + LXDE Based Desktop.
 
+> [!IMPORTANT]
+> Support for this repository is best effort due to me working full time. I will try my best where I can to address issues in a timely manner where my other commitments allow. This may result in some neglect of this repository from time to time.
+
 ## Basic Usage
 To get started quickly you can run the following command, note depending on your docker configuration and your user's group membership you may need to prepend this with `sudo`
 ```
