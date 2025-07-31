@@ -92,6 +92,8 @@ os.system("chown %s:%s -R /home/%s" % (username,username,username))
 # Check for /Apps
 #
 #! FIXME: Need to implement /Apps support
+if os.path.isdir('/Apps'):
+    print("WARN: Support for /Apps is not implemented yet")
 
 #
 # Start the desktop
