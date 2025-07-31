@@ -10,7 +10,9 @@ To get started quickly you can run the following command, note depending on your
 docker run -it --rm -p 8080:8080 whaletop
 ```
 
-Once the container has started you can access the session with the password `docker` by navigating your web browser to http://localhost:8080
+Once the container has started you can access the session with the password that is logged in the STDOUT by navigating your web browser to http://localhost:8080
+
+Alternatively you can find the password in the container's file system under `/opt/whaletop/vnc_passwd`.
 
 ## Session preservation
 By default without any special parameters and using the above example run command, your desktop will be emphemeral which means you will loose everything when the container is stopped.
