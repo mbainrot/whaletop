@@ -9,6 +9,7 @@ import string
 import time
 import psutil
 
+# Parse arguments
 parser = argparse.ArgumentParser(
     prog = 'vnc_desktop_launcher',
     description = 'noVNC Based Desktop')
