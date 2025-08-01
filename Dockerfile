@@ -35,7 +35,12 @@ RUN apt-get update && \
 
 # Install apt based apps
 RUN apt-get update && \
-    apt-get install -y libnss3 chromium python3-psutil && \
+    apt-get install -y libnss3 chromium && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install start script dependancies
+RUN apt-get update && \
+    apt-get install -y python3-psutil python3-openssl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Generate locales

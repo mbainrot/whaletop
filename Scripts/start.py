@@ -9,6 +9,8 @@ import string
 import time
 import psutil
 
+from OpenSSL import crypto, SSL
+
 # Parse arguments
 parser = argparse.ArgumentParser(
     prog = 'vnc_desktop_launcher',
@@ -46,8 +48,17 @@ parser.add_argument(
     '--enable-tls',
     required=False,
     action='store_true',
-    help='Whether we set the vnc password from the environment varialble VNC_PASSWORD or whether to randomly generate it'
+    help='Whether to enable TLS at all, if specified without --tls-certifcate will automatically generate a self-signed certificate.'
 )
+
+parser.add_argument(
+    '--tls-certificate',
+    required=False,
+    default=None,
+    help='All in one pem formatted certificate to be used by websockify.'
+)
+
+
 
 args = parser.parse_args()
 
@@ -84,6 +95,43 @@ if args.vnc_password_from_env == False:
 if args.vnc_password_from_env == True:
     #! FIXME: Need to implement it
     raise "VNC_PASSWORD_FROM_ENV NOT IMPLEMENTED"
+
+if args.enable_tls == True:
+    if args.tls_certificate == None:
+        pemPath = "/home/%s/.vnc/tls.pem" % username
+        pubPemPath = "/opt/whaletop/pub_ssl.pem"
+
+        key = crypto.PKey()
+        key.generate_key(crypto.TYPE_RSA, 4096)
+
+        cert = crypto.X509()
+        cert.get_subject().C = 'AU'
+        cert.get_subject().ST = 'ACT'
+        cert.get_subject().L = 'Canberra'
+        cert.get_subject().O = 'Non-existant Company'
+        cert.get_subject().OU = 'Gadgets and Widgets Unit'
+        cert.get_subject().CN = 'localhost.localdomain'
+        cert.get_subject().emailAddress = 'null@localhost.local.domain'
+        cert.set_serial_number(0)
+        cert.gmtime_adj_notBefore(0)
+        cert.gmtime_adj_notAfter(3600 * 24 * 365)
+        cert.set_issuer(cert.get_subject())
+        cert.set_pubkey(key)
+        cert.sign(key, 'sha512')
+
+        # Dump public certificate
+        with open(pemPath, 'wt') as f:
+            f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode("utf-8"))
+
+        # Dump public cert in /opt
+        with open(pubPemPath, 'wt') as f:
+            f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode("utf-8"))       
+
+        # Dump private key
+        with open(pemPath, 'at') as f:
+            f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key).decode("utf-8"))
+
+        
 
 # - Fix user permissions
 #! FIXME: Needs error handling
@@ -130,8 +178,12 @@ print("detected vncserver pid of %s" % vncserver_pid)
 if args.enable_tls == False:
     os.system("su %s -c 'websockify --web=/usr/share/novnc/ $NOVNC_PORT localhost:$VNC_PORT &'" % username)
 else:
-    #! FIXME: implement support for enable-tls
-    raise "enable-tls is not implemented"
+    if args.tls_certificate == None:
+        #! FIXME: need to add check to ensure pemPath actually exists
+        pemPath = "/home/%s/.vnc/tls.pem" % username
+        os.system("su %s -c 'websockify --web=/usr/share/novnc/ --cert='%s' --key='%s' --ssl-only $NOVNC_PORT localhost:$VNC_PORT &'" % (username, pemPath, pemPath))
+    else:
+        raise "enable-tls + --tls-certificate is not implemented"
 
 # Report end of start up sequence
 with open('/opt/whaletop/status','w') as f:

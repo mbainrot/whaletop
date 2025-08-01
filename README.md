@@ -71,13 +71,12 @@ By default the start.py grants the user sudo access to the VM. If this is undesi
 *Not yet implemented* - Allows the presetting of the VNC password from the environment variable `VNC_PASSWORD`, useful for managed user sessions where you are automating the VNC connection.
 
 ### --enable-tls
-*Not yet implemented* - Enables SSL on the noVNC page for improved security, you must provide either `--cert-path` or `--generate-certs` in order for this to work.
+Enables SSL on the noVNC page for improved security. By default it adds `--ssl-only` to the websockify commandline. Will auto generate self-signed certificate if `--tls-certificate` is absent. Certificate is valid for 1 year and is generated with example parameters. If you want a nicer cert, generate your own and use `--tls-certificate`
 
-### --cert-path
+For trust verification purposes a copy of the public self-signed cert is provided in `/opt/whaletop/pub_ssl.pem`
+
+### --tls-certificate
 *Not yet implemented* - Specifies the path to the SSL certificates to be used by sockify. You will need to volume mount the certs so they appear inside the container.
-
-### --generate-certs
-*Not yet implemented* - Specifies whether self-signed certificates are to be generated. Public certificate is additionally stored in `/opt/whaletop/tls_cert_pub.cer`
 
 ### --no-exit-on-failure
 Specifies whether the health check should **NOT** explode the docker container if the desktop becomes unhealthy. Generally you want to leave the default behavour alone as it allows the container to clean itself up if you specify the `--rm` flag or to restart itself if you specify the `--restart=always` flag. However if you want to be able to recover the desktop/files in the event of a crash you may wish to set this.
