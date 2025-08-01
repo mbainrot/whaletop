@@ -69,7 +69,7 @@ def certificateIsExpired(path):
     '''
 
     if os.path.exists(path) == False:
-        raise "'%s' does not exist" % path
+        raise Exception("'%s' does not exist" % path)
 
     x509_cert = None
     with open(path, 'rt') as f:
@@ -177,7 +177,7 @@ if args.enable_tls == True:
         pemPath = args.tls_certificate
         # Check that certificate file exists in container
         if os.path.exists(pemPath) == False:
-            raise "Certificate file %s does not exist" % pemPath
+            raise Exception("Certificate file %s does not exist" % pemPath)
         
         #! FIXME: Need check to see if private key is password protected
 
@@ -185,7 +185,7 @@ if args.enable_tls == True:
         certExpired = certificateIsExpired(pemPath)
 
         if certExpired == True:
-            raise "Certificate is expired, refusing to start the server"
+            raise Exception("Certificate is expired, refusing to start the server")
 
         # If we got to here without failure, all is well
         os.system("cp '%s' /home/%s/.vnc/tls.pem" % (pemPath, username))
@@ -241,7 +241,7 @@ else:
     pemPath = "/home/%s/.vnc/tls.pem" % username
 
     if os.path.exists(pemPath) == False:
-        raise "%s certificate does not exist"
+        raise Exception("%s certificate does not exist")
     
     os.system("su %s -c 'websockify --web=/usr/share/novnc/ --cert='%s' --key='%s' --ssl-only $NOVNC_PORT localhost:$VNC_PORT &'" % (username, pemPath, pemPath))
 
