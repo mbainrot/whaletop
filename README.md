@@ -7,7 +7,7 @@ Docker + noVNC + LXDE Based Desktop.
 ## Basic Usage
 To get started quickly you can run the following command, note depending on your docker configuration and your user's group membership you may need to prepend this with `sudo`
 ```
-docker run -it --rm -p 8080:8080 whaletop
+docker run -it --rm -p 8080:8080 mbainrot/whaletop
 ```
 
 Once the container has started you can access the session with the password that is logged in the STDOUT by navigating your web browser to http://localhost:8080
@@ -21,7 +21,7 @@ To prevent this we recommend mounting the home volume to either a docker volume 
 
 An example commandline of how to do this and with support for chromium sandboxing is as follows
 ```
-docker run -it --rm --security-opt seccomp=$(pwd)/chrome.json -v /home/$USER/Docker/Volumes/user:/home/user -p 8080:8090 whaletop
+docker run -it --rm --security-opt seccomp=$(pwd)/chrome.json -v /home/$USER/Docker/Volumes/user:/home/user -p 8080:8090 mbainrot/whaletop
 ```
 
 Explaination of the parameters:
@@ -58,7 +58,7 @@ To use the parameters add to the end of the commandline `/start.py --your-params
 
 e.g.
 ```
-docker run -it --rm -p 8080:8080 whaletop /start.py --username=bob
+docker run -it --rm -p 8080:8080 mbainrot/whaletop /start.py --username=bob
 ```
 
 ### --username (default == user)
@@ -72,7 +72,7 @@ Allows the presetting of the VNC password from the environment variable `VNC_PAS
 
 Example invocation:
 ```
-docker run -it --rm -p 8080:8080 --env VNC_PASSWORD=$VNC_PASSWORD whaletop /start.py --vnc-password-from-env
+docker run -it --rm -p 8080:8080 --env VNC_PASSWORD=$VNC_PASSWORD mbainrot/whaletop /start.py --vnc-password-from-env
 ```
 
 ### --enable-tls
@@ -109,7 +109,7 @@ When the `/Apps` folder is present, the start up script recursively searches thr
 
 An example invocation for an appimage is as follows:
 ```
-docker run -it --rm -p 8080:8080 -v "`pwd`"/Apps/SomeApp:/Apps/SomeApp:ro --security-opt seccomp=$(pwd)/chrome.json whaletop
+docker run -it --rm -p 8080:8080 -v "`pwd`"/Apps/SomeApp:/Apps/SomeApp:ro --security-opt seccomp=$(pwd)/chrome.json mbainrot/whaletop
 ```
 
 ## Chromium Sandboxing
@@ -121,7 +121,7 @@ There are two supported methods that Whaletop supports to address this
 This is the recommended way as it abides by the principal of least priviledge. To do this add the following docker commandline option to your `docker run` command
 
 ```
-docker run -it --rm --security-opt seccomp=$(pwd)/chrome.json -p 8080:8082 whaletop
+docker run -it --rm --security-opt seccomp=$(pwd)/chrome.json -p 8080:8082 mbainrot/whaletop
 ```
 
 This method is based on the fantastic work by Jessie Frazelle.
@@ -132,7 +132,7 @@ This way is not so recommended as it results in excessive system permissions suc
 To do this add `--priviledged` to the docker commandline
 
 ```
-docker run -it --rm --priviledged -p 8080:8082 whaletop
+docker run -it --rm --priviledged -p 8080:8082 mbainrot/whaletop
 ```
 
 ### No-sandbox mode
