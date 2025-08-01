@@ -46,11 +46,6 @@ The valid statuses are as follows:
 * STARTED - This fires just after all the system calls are completed but before the health checks start
 * HEALTHY - This is fired after the health checks complete for the first time
 
-### Embedding of applications
-*To be implemented*
-
-Once implemented any .Desktop files located in the /Apps folder will be automatically added to the start menu during the session start up.
-
 ## Start.py Parameters
 The following parameters are supported in the `/start.py` allowing further behavour customisation.
 
