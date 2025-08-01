@@ -124,10 +124,19 @@ if args.vnc_password_from_env == False:
     os.system("mkdir -p /home/%s/.vnc" % username)
     os.system("echo '%s' | vncpasswd -f > /home/%s/.vnc/passwd" % (password, username))
     os.system("chmod 600 /home/%s/.vnc/passwd" % username)
+else:
+    if not "VNC_PASSWORD" in os.environ:
+        raise Exception("Environment variable VNC_PASSWORD is not defined!")
 
-if args.vnc_password_from_env == True:
-    #! FIXME: Need to implement it
-    raise "VNC_PASSWORD_FROM_ENV NOT IMPLEMENTED"
+    password = os.environ["VNC_PASSWORD"]
+
+    with open('/opt/whaletop/vnc_passwd','w') as f:
+        f.write(password)
+
+    os.system("mkdir -p /home/%s/.vnc" % username)
+    os.system("echo '%s' | vncpasswd -f > /home/%s/.vnc/passwd" % (password, username))
+    os.system("chmod 600 /home/%s/.vnc/passwd" % username)
+
 
 if args.enable_tls == True:
     if args.tls_certificate == None:
@@ -251,14 +260,15 @@ while True:
         VNC_SERVER_OK = True
     
     # Check that certificate hasn't expired
-    pemPath = "/home/%s/.vnc/tls.pem" % username
-    if certificateIsExpired(pemPath) == False:
-        CERTIFICATE_OK = True
-    else:
-        print("ERROR: Certificate has expired")
+    if args.enable_tls == True:
+        pemPath = "/home/%s/.vnc/tls.pem" % username
+        if certificateIsExpired(pemPath) == False:
+            CERTIFICATE_OK = True
+        else:
+            print("ERROR: Certificate has expired")
     
     # Update status file
-    if VNC_SERVER_OK == False or CERTIFICATE_OK == False:
+    if VNC_SERVER_OK == False or (CERTIFICATE_OK == False and args.enable_tls == True):
         with open('/opt/whaletop/status','w') as f:
             f.write("UNHEALTHY")
         if args.no_exit_on_failure == False:

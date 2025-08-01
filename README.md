@@ -68,7 +68,12 @@ Specifies what the name of the user's session user should be. Useful for further
 By default the start.py grants the user sudo access to the VM. If this is undesirable you can prevent this by setting the --no-sudo switch.
 
 ### --vnc-password-from-env
-*Not yet implemented* - Allows the presetting of the VNC password from the environment variable `VNC_PASSWORD`, useful for managed user sessions where you are automating the VNC connection.
+Allows the presetting of the VNC password from the environment variable `VNC_PASSWORD`, useful for managed user sessions where you are automating the VNC connection.
+
+Example invocation:
+```
+docker run -it --rm -p 8080:8080 --env VNC_PASSWORD=$VNC_PASSWORD whaletop /start.py --vnc-password-from-env
+```
 
 ### --enable-tls
 Enables SSL on the noVNC page for improved security. By default it adds `--ssl-only` to the websockify commandline. Will auto generate self-signed certificate if `--tls-certificate` is absent. Certificate is valid for 1 year and is generated with example parameters. If you want a nicer cert, generate your own and use `--tls-certificate`
