@@ -58,9 +58,31 @@ parser.add_argument(
     help='All in one pem formatted certificate to be used by websockify.'
 )
 
-
-
 args = parser.parse_args()
+
+def certificateIsExpired(path):
+    '''
+    Tests the provided path certificate to see whether it's expired
+
+    Returns False if not expired, returns True if expired
+    '''
+
+    if os.path.exists(path) == False:
+        raise "'%s' does not exist" % path
+
+    x509_cert = None
+    with open(path, 'rt') as f:
+        x509_cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read(-1))
+
+    now = time.time()
+    x509exp_ts = x509_cert.get_notAfter()
+    expts = time.mktime(time.strptime(x509exp_ts.decode('ASCII'), '%Y%m%d%H%M%SZ'))
+
+    if now > expts:
+        return True
+    
+    return False
+
 
 # Init the environment
 # - Add the user
@@ -131,6 +153,25 @@ if args.enable_tls == True:
         with open(pemPath, 'at') as f:
             f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key).decode("utf-8"))
 
+    if args.tls_certificate != None:
+        pemPath = args.tls_certificate
+        # Check that certificate file exists in container
+        if os.path.exists(pemPath) == False:
+            raise "Certificate file %s does not exist" % pemPath
+        
+        #! FIXME: Need check to see if private key is password protected
+
+        # Check that certificate _is not expired_
+        certExpired = certificateIsExpired(pemPath)
+
+        if certExpired == True:
+            raise "Certificate is expired, refusing to start the server"
+
+        # If we got to here without failure, all is well
+        os.system("cp '%s' /home/%s/.vnc/tls.pem" % (pemPath, username))
+
+        
+
         
 
 # - Fix user permissions
@@ -178,12 +219,13 @@ print("detected vncserver pid of %s" % vncserver_pid)
 if args.enable_tls == False:
     os.system("su %s -c 'websockify --web=/usr/share/novnc/ $NOVNC_PORT localhost:$VNC_PORT &'" % username)
 else:
-    if args.tls_certificate == None:
-        #! FIXME: need to add check to ensure pemPath actually exists
-        pemPath = "/home/%s/.vnc/tls.pem" % username
-        os.system("su %s -c 'websockify --web=/usr/share/novnc/ --cert='%s' --key='%s' --ssl-only $NOVNC_PORT localhost:$VNC_PORT &'" % (username, pemPath, pemPath))
-    else:
-        raise "enable-tls + --tls-certificate is not implemented"
+    pemPath = "/home/%s/.vnc/tls.pem" % username
+    
+    if os.path.exists(pemPath) == False:
+        raise "%s certificate does not exist"
+    
+    os.system("su %s -c 'websockify --web=/usr/share/novnc/ --cert='%s' --key='%s' --ssl-only $NOVNC_PORT localhost:$VNC_PORT &'" % (username, pemPath, pemPath))
+
 
 # Report end of start up sequence
 with open('/opt/whaletop/status','w') as f:
@@ -192,13 +234,21 @@ with open('/opt/whaletop/status','w') as f:
 #! FIXME: Code in some health checking
 while True:
     VNC_SERVER_OK = False
+    CERTIFICATE_OK = False
 
+    # Check that VNC server is still running
     if psutil.pid_exists(vncserver_pid) == True:
         VNC_SERVER_OK = True
-        
+    
+    # Check that certificate hasn't expired
+    pemPath = "/home/%s/.vnc/tls.pem" % username
+    if certificateIsExpired(pemPath) == False:
+        CERTIFICATE_OK = True
+    else:
+        print("ERROR: Certificate has expired")
     
     # Update status file
-    if VNC_SERVER_OK == False:
+    if VNC_SERVER_OK == False or CERTIFICATE_OK == False:
         with open('/opt/whaletop/status','w') as f:
             f.write("UNHEALTHY")
         if args.no_exit_on_failure == False:

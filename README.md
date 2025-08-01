@@ -76,7 +76,16 @@ Enables SSL on the noVNC page for improved security. By default it adds `--ssl-o
 For trust verification purposes a copy of the public self-signed cert is provided in `/opt/whaletop/pub_ssl.pem`
 
 ### --tls-certificate
-*Not yet implemented* - Specifies the path to the SSL certificates to be used by sockify. You will need to volume mount the certs so they appear inside the container.
+Specifies the path to the SSL certificates to be used by websockify.
+
+Certificate should be a combined public/private key PEM file, without a password.
+
+Path is relative to the container so you will need to mount a volume with your certificate e.g. /data/mycert.pem.
+
+During start up, your certificate will be copied automatically to the ~/.vnc folder and arguments passed to websockify.
+
+> [!WARNING]
+> By default (without `--no-exit-on-failure` set) if your certificate expires during the session, the server will auto terminate due to failing health checks. This _currently_ happens without warning.
 
 ### --no-exit-on-failure
 Specifies whether the health check should **NOT** explode the docker container if the desktop becomes unhealthy. Generally you want to leave the default behavour alone as it allows the container to clean itself up if you specify the `--rm` flag or to restart itself if you specify the `--restart=always` flag. However if you want to be able to recover the desktop/files in the event of a crash you may wish to set this.
