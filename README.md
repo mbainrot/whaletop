@@ -90,6 +90,23 @@ During start up, your certificate will be copied automatically to the ~/.vnc fol
 ### --no-exit-on-failure
 Specifies whether the health check should **NOT** explode the docker container if the desktop becomes unhealthy. Generally you want to leave the default behavour alone as it allows the container to clean itself up if you specify the `--rm` flag or to restart itself if you specify the `--restart=always` flag. However if you want to be able to recover the desktop/files in the event of a crash you may wish to set this.
 
+## Application Support
+Whaletop supports a basic form of application mapping whereby any `.desktop` files present in the `/Apps` folder will be automatically copied to the `/usr/share/applications` directory before the X server is started (thereby avoiding the need to restart the UI panels to pickup the changes).
+
+Generally it is recommended if you are going to mount applications for the user you do it on a subfolder basis rather than `/Apps` as the `/Apps` folder is the recommended way of customising the container to include applications and mounting it will explode any customisations present.
+
+> [!WARNING]
+> When mounting application folders, especially if they are going to be shared between multiple users, it is **strongly** recommended that you mount them read only to avoid users from being able to edit the applications.
+
+Also note that there is no smarts to auto-remap paths in your .desktop files, so you will need to ensure they have the correct full path based on how you are planning to mount them.
+
+When the `/Apps` folder is present, the start up script recursively searches through the folder to an infinite depth so you can safely nest your files several layers down to avoid squashing any container level customisations. 
+
+An example invocation for an appimage is as follows:
+```
+docker run -it --rm -p 8080:8080 -v "`pwd`"/Apps/SomeApp:/Apps/SomeApp:ro --security-opt seccomp=$(pwd)/chrome.json whaletop
+```
+
 ## Chromium Sandboxing
 So in order for Chromium based applications (such as many AppImages, Google Chrome, Chromium browser, Firefox etc) to function with sandboxing enabled, they need to be able to access certain system operations.
 

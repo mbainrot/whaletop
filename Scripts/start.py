@@ -8,6 +8,7 @@ import secrets
 import string
 import time
 import psutil
+import shutil
 
 from OpenSSL import crypto, SSL
 
@@ -83,6 +84,16 @@ def certificateIsExpired(path):
     
     return False
 
+def autoCopyDesktopFiles(path):
+    files = os.listdir(path)
+    for file in files:
+        fullpath = "/%s/%s" % (path, file)
+        dstPath = "/usr/share/applications/%s" % file
+
+        if fullpath.endswith(".desktop") and os.path.isfile(fullpath):
+            shutil.copy(fullpath, dstPath)
+        elif os.path.isdir(fullpath):
+            autoCopyDesktopFiles(fullpath)
 
 # Init the environment
 # - Add the user
@@ -172,7 +183,6 @@ if args.enable_tls == True:
 
         
 
-        
 
 # - Fix user permissions
 #! FIXME: Needs error handling
@@ -181,9 +191,9 @@ os.system("chown %s:%s -R /home/%s" % (username,username,username))
 #
 # Check for /Apps
 #
-#! FIXME: Need to implement /Apps support
 if os.path.isdir('/Apps'):
-    print("WARN: Support for /Apps is not implemented yet")
+    autoCopyDesktopFiles('/Apps')
+
 
 #
 # Start the desktop
@@ -220,7 +230,7 @@ if args.enable_tls == False:
     os.system("su %s -c 'websockify --web=/usr/share/novnc/ $NOVNC_PORT localhost:$VNC_PORT &'" % username)
 else:
     pemPath = "/home/%s/.vnc/tls.pem" % username
-    
+
     if os.path.exists(pemPath) == False:
         raise "%s certificate does not exist"
     
