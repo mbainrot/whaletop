@@ -28,7 +28,10 @@ CMD ["/start.py"]
 ## Application packaging example
 In this example we'll install VSCodium appimage onto a docker container, this is a little more involved as we need to create a desktop file too.
 
-Note for this example as we're picking on a chromium based application, you will need to remember to set the sec-policy or the demo will not work.
+> [!IMPORTANT]
+> Note for this example as we're picking on a chromium based application, you will need to remember to set the sec-policy or the demo will not work.
+
+This also demonstrates the auto .desktop functionality, whereby the startup script recurses /Apps and automatically copies any found .desktop files to `/usr/share/applications` so you don't have to remember which path to use. 
 
 ```Dockerfile
 FROM mbainrot/whaletop
