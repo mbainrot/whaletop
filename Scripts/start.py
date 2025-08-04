@@ -84,6 +84,43 @@ def certificateIsExpired(path):
     
     return False
 
+def getPassword():
+    return '';
+
+def pemIsPassworded(path):
+    '''
+    Tests whether the private key in a given pem file has a password on it
+    '''
+    if os.path.exists(path) == False:
+        raise Exception("'%s' does not exist" % path)
+    
+    
+    pemContent = None
+    with open(path, 'rt') as f:
+        pemContent = f.read(-1)
+    
+    foundEncrypted = False
+
+    try:
+        pemContent.index('ENCRYPTED')
+        return True
+    except:
+        print("String ENCRYPTED not found in pemContent")
+  
+
+    pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, pemContent)
+
+    if pkey == None:
+        raise Exception("Got None for pkey, something has gone wrong loading the certificate")
+
+    pkeyCheck = pkey.check()
+    print("pkey.check() == %s" % pkeyCheck)
+
+    if pkeyCheck == False:
+        raise Exception("Private key failed validation")
+
+    return False
+
 def autoCopyDesktopFiles(path):
     files = os.listdir(path)
     for file in files:
@@ -196,13 +233,18 @@ if args.enable_tls == True:
         if os.path.exists(pemPath) == False:
             raise Exception("Certificate file %s does not exist" % pemPath)
         
-        #! FIXME: Need check to see if private key is password protected
-
         # Check that certificate _is not expired_
         certExpired = certificateIsExpired(pemPath)
 
         if certExpired == True:
             raise Exception("Certificate is expired, refusing to start the server")
+
+        pemPassworded = pemIsPassworded(pemPath)
+
+        print("pemPassworded == %s" % pemPassworded)
+
+        if pemPassworded == True:
+            raise Exception("Private key has a password and we don't support that yet")
 
         # If we got to here without failure, all is well
         os.system("cp '%s' /home/%s/.vnc/tls.pem" % (pemPath, username))
