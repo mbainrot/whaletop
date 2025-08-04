@@ -253,8 +253,8 @@ if args.enable_tls == True:
         os.system("cp '%s' /home/%s/.vnc/tls.pem" % (pemPath, username))
 
 # - Fix user permissions
-#! FIXME: Needs error handling & not using os.system
 os.system("chown %s:%s -R /home/%s" % (username,username,username))
+
 
 #
 # Check for /Apps
