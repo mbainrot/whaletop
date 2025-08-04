@@ -326,6 +326,9 @@ if websockify_pid == -1:
 else:
     print("Found websockify running on pid %s" % websockify_pid)
 
+# Start dbus-daemon
+os.system("dbus-daemon --system --fork")
+
 # Report end of start up sequence
 with open('/opt/whaletop/status','w') as f:
     f.write("STARTED")

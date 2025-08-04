@@ -35,7 +35,11 @@ RUN apt-get update && \
 
 # Install apt based apps
 RUN apt-get update && \
-    apt-get install -y libnss3 chromium && \
+    apt-get install -y libnss3 \
+    chromium \
+    libnotify-bin \
+    dbus-x11 \
+    notification-daemon && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install start script dependancies
@@ -64,6 +68,21 @@ RUN mkdir -p /opt/whaletop
 # Add our run script
 ADD Scripts/start.py /start.py
 RUN chmod +x /start.py
+
+# Add our login script
+ADD Scripts/login.sh /login.sh
+RUN chmod +x /login.sh
+
+RUN echo '[Desktop Entry]\n\
+Version=1.0\n\
+Name=LoginScrpt\n\
+Comment=Login Script\n\
+GenericName=Login Script\n\
+Exec=/login.sh\n\
+NotShowIn=GNOME;KDE;MATE;LXQt;XFCE;Unity;X-Cinnamon;\n\
+NoDisplay=true\n\
+Type=Application\n\
+MimeType=text/plain;' > /etc/xdg/autostart/login_script.desktop
 
 # Expose ports for VNC and noVNC
 EXPOSE 5901 8080
