@@ -84,6 +84,43 @@ def certificateIsExpired(path):
     
     return False
 
+def getPassword():
+    return '';
+
+def pemIsPassworded(path):
+    '''
+    Tests whether the private key in a given pem file has a password on it
+    '''
+    if os.path.exists(path) == False:
+        raise Exception("'%s' does not exist" % path)
+    
+    
+    pemContent = None
+    with open(path, 'rt') as f:
+        pemContent = f.read(-1)
+    
+    foundEncrypted = False
+
+    try:
+        pemContent.index('ENCRYPTED')
+        return True
+    except:
+        print("String ENCRYPTED not found in pemContent")
+  
+
+    pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, pemContent)
+
+    if pkey == None:
+        raise Exception("Got None for pkey, something has gone wrong loading the certificate")
+
+    pkeyCheck = pkey.check()
+    print("pkey.check() == %s" % pkeyCheck)
+
+    if pkeyCheck == False:
+        raise Exception("Private key failed validation")
+
+    return False
+
 def autoCopyDesktopFiles(path):
     files = os.listdir(path)
     for file in files:
@@ -110,33 +147,53 @@ if args.no_sudo == False:
         f.write("%s ALL=(ALL) NOPASSWD: ALL" % username)
 
 # - Configure VNC Password
+password = None
 if args.vnc_password_from_env == False:
     # Randomly generate password
     letter_set = string.ascii_letters + string.digits
     password = ''.join(secrets.choice(letter_set) for i in range(20))
-
-    print("VNC Password = %s" % password)
-
-    with open('/opt/whaletop/vnc_passwd','w') as f:
-        f.write(password)
-
-    #! FIXME: needs error handling...
-    os.system("mkdir -p /home/%s/.vnc" % username)
-    os.system("echo '%s' | vncpasswd -f > /home/%s/.vnc/passwd" % (password, username))
-    os.system("chmod 600 /home/%s/.vnc/passwd" % username)
 else:
     if not "VNC_PASSWORD" in os.environ:
         raise Exception("Environment variable VNC_PASSWORD is not defined!")
 
     password = os.environ["VNC_PASSWORD"]
 
-    with open('/opt/whaletop/vnc_passwd','w') as f:
-        f.write(password)
+if password == None:
+    raise Exception("Failed to aquire a password for VNC")
 
-    os.system("mkdir -p /home/%s/.vnc" % username)
-    os.system("echo '%s' | vncpasswd -f > /home/%s/.vnc/passwd" % (password, username))
-    os.system("chmod 600 /home/%s/.vnc/passwd" % username)
+if password == '':
+    raise Exception("Password must not be blank")
 
+print("VNC Password = %s" % password)
+
+with open('/opt/whaletop/vnc_passwd','w') as f:
+    f.write(password)
+
+vncHome = "/home/%s/.vnc" % username
+passwdFile = "%s/passwd" % vncHome
+
+os.system("mkdir -p %s" % vncHome)
+
+if os.path.exists(vncHome) == False:
+    raise Exception("Failed to create %s" % vncHome)
+
+os.system("echo '%s' | vncpasswd -f > %s" % (password, passwdFile))
+
+if os.path.exists(passwdFile) == False:
+    raise Exception("Failed to set passwd file @ %s" % passwdFile)
+
+# Set permissions of the passwd file to 600 by just providing S_IRUSR (which is read by owner)
+# at time of writing this blanks all other permissions out
+os.chmod(passwdFile, os.path.stat.S_IRUSR)
+
+passwdFileStat = os.stat(passwdFile)
+
+if passwdFileStat.st_mode != 33024:
+    raise Exception("Incorrect permissions on %s (got %s, expected 33024)" % (passwdFile, passwdFileStat.st_mode))
+
+if args.tls_certificate != None and args.enable_tls == False:
+    # User forgot to set --enable-tls, lets be helpful and enable it
+    args.enable_tls = True
 
 if args.enable_tls == True:
     if args.tls_certificate == None:
@@ -179,30 +236,31 @@ if args.enable_tls == True:
         if os.path.exists(pemPath) == False:
             raise Exception("Certificate file %s does not exist" % pemPath)
         
-        #! FIXME: Need check to see if private key is password protected
-
         # Check that certificate _is not expired_
         certExpired = certificateIsExpired(pemPath)
 
         if certExpired == True:
             raise Exception("Certificate is expired, refusing to start the server")
 
+        pemPassworded = pemIsPassworded(pemPath)
+
+        print("pemPassworded == %s" % pemPassworded)
+
+        if pemPassworded == True:
+            raise Exception("Private key has a password and we don't support that yet")
+
         # If we got to here without failure, all is well
         os.system("cp '%s' /home/%s/.vnc/tls.pem" % (pemPath, username))
 
-        
-
-
 # - Fix user permissions
-#! FIXME: Needs error handling
 os.system("chown %s:%s -R /home/%s" % (username,username,username))
+
 
 #
 # Check for /Apps
 #
 if os.path.isdir('/Apps'):
     autoCopyDesktopFiles('/Apps')
-
 
 #
 # Start the desktop
@@ -213,24 +271,32 @@ with open('/opt/whaletop/status','w') as f:
     f.write("STARTING")
 
 # Remove old log/pid files if user is running a persistent home
-os.system("su %s -c 'rm /home/%s/.vnc/*.pid'" % (username,username))
-os.system("su %s -c 'rm /home/%s/.vnc/*.log'" % (username,username))
+vnc_home = "/home/%s/.vnc" % username
+files = os.listdir(vnc_home)
+
+for file in files:
+    if file.endswith('.pid') or file.endswith('.log'):
+        filepath = "%s/%s" % (vnc_home, file)
+
+        print("Found pre-existing file %s, removing it" % filepath)
+
+        os.remove(filepath)
 
 # Set up VNC server & start desktop environment
 os.system("su %s -c 'vncserver $DISPLAY -geometry 1280x720 -depth 24'" % username)
 os.system("su %s -c 'startlxde &'" % username)
 
 # Capture pid of the vnc server
-vnc_home = "/home/%s/.vnc" % username
 files = os.listdir(vnc_home)
-
 vncserver_pid = -1
-
 for file in files:
     if file.endswith('.pid'):
         filepath = "%s/%s" % (vnc_home, file)
         with open(filepath, 'r') as f:
             vncserver_pid = int(f.readline().strip())
+
+if vncserver_pid == -1:
+    raise Exception("Could not find PID file for vncserver")
 
 print("detected vncserver pid of %s" % vncserver_pid)
 
@@ -245,20 +311,52 @@ else:
     
     os.system("su %s -c 'websockify --web=/usr/share/novnc/ --cert='%s' --key='%s' --ssl-only $NOVNC_PORT localhost:$VNC_PORT &'" % (username, pemPath, pemPath))
 
+# Grab the websockify process id for health checking
+websockify_pid = -1
+
+for proc in psutil.process_iter():
+    if proc.name() == "websockify":
+        if websockify_pid == -1:
+            websockify_pid = proc.pid
+        else:
+            raise Exception("Found more than one websockify!!")
+
+if websockify_pid == -1:
+    raise Exception("Websockify failed to start")
+else:
+    print("Found websockify running on pid %s" % websockify_pid)
 
 # Report end of start up sequence
 with open('/opt/whaletop/status','w') as f:
     f.write("STARTED")
 
-#! FIXME: Code in some health checking
 while True:
     VNC_SERVER_OK = False
+    WEBSOCKIFY_OK = False
     CERTIFICATE_OK = False
 
     # Check that VNC server is still running
     if psutil.pid_exists(vncserver_pid) == True:
-        VNC_SERVER_OK = True
-    
+        proc = psutil.Process(pid=vncserver_pid)
+ 
+        if proc.is_running() == True and proc.status() != psutil.STATUS_ZOMBIE:
+            VNC_SERVER_OK = True
+        else:
+            print("VNC Server is not OK!!! (is_running: %s, status: %s)" % (proc.is_running(), proc.status()))
+    else:
+        print("VNC Server PID no longer exists")
+
+    # Check that Websockify is still running
+    if psutil.pid_exists(websockify_pid) == True:
+        proc = psutil.Process(pid=websockify_pid)
+ 
+        if proc.is_running() == True and proc.status() != psutil.STATUS_ZOMBIE:
+            WEBSOCKIFY_OK = True
+        else:
+            print("Websockify is not OK!!! (is_running: %s, status: %s)" % (proc.is_running(), proc.status()))
+    else:
+        print("Websockify PID no longer exists")
+
     # Check that certificate hasn't expired
     if args.enable_tls == True:
         pemPath = "/home/%s/.vnc/tls.pem" % username
@@ -268,10 +366,12 @@ while True:
             print("ERROR: Certificate has expired")
     
     # Update status file
-    if VNC_SERVER_OK == False or (CERTIFICATE_OK == False and args.enable_tls == True):
+    if VNC_SERVER_OK == False or WEBSOCKIFY_OK == False or (CERTIFICATE_OK == False and args.enable_tls == True):
         with open('/opt/whaletop/status','w') as f:
             f.write("UNHEALTHY")
         if args.no_exit_on_failure == False:
+            debug = (VNC_SERVER_OK, WEBSOCKIFY_OK, CERTIFICATE_OK, args.enable_tls)
+            print("Detected health issue; VNC_SERVER_OK = %s, WEBSOCKIFY_OK = %s, (CERTIFICATE_OK == %s and args.enable_tls == %s)" % debug)
             break
     else:
         with open('/opt/whaletop/status','w') as f:
