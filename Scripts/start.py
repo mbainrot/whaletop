@@ -191,6 +191,9 @@ passwdFileStat = os.stat(passwdFile)
 if passwdFileStat.st_mode != 33024:
     raise Exception("Incorrect permissions on %s (got %s, expected 33024)" % (passwdFile, passwdFileStat.st_mode))
 
+if args.tls_certificate != None and args.enable_tls == False:
+    # User forgot to set --enable-tls, lets be helpful and enable it
+    args.enable_tls = True
 
 if args.enable_tls == True:
     if args.tls_certificate == None:
@@ -249,11 +252,8 @@ if args.enable_tls == True:
         # If we got to here without failure, all is well
         os.system("cp '%s' /home/%s/.vnc/tls.pem" % (pemPath, username))
 
-        
-
-
 # - Fix user permissions
-#! FIXME: Needs error handling
+#! FIXME: Needs error handling & not using os.system
 os.system("chown %s:%s -R /home/%s" % (username,username,username))
 
 #
@@ -261,7 +261,6 @@ os.system("chown %s:%s -R /home/%s" % (username,username,username))
 #
 if os.path.isdir('/Apps'):
     autoCopyDesktopFiles('/Apps')
-
 
 #
 # Start the desktop
@@ -309,7 +308,6 @@ else:
 with open('/opt/whaletop/status','w') as f:
     f.write("STARTED")
 
-#! FIXME: Code in some health checking
 while True:
     VNC_SERVER_OK = False
     CERTIFICATE_OK = False
