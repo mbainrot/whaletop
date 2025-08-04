@@ -1,7 +1,7 @@
 from OpenSSL import crypto, SSL
 import time
 
-pemPath = 'valid_shortlived\_combined.pem'
+pemPath = 'valid_shortlived_combined.pem'
 
 beforeTs = time.gmtime(time.time() - 3600 * 48)
 afterTs = time.gmtime(time.time() - 3600 * 24)
