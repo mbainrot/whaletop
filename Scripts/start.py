@@ -271,19 +271,24 @@ with open('/opt/whaletop/status','w') as f:
     f.write("STARTING")
 
 # Remove old log/pid files if user is running a persistent home
-os.system("su %s -c 'rm /home/%s/.vnc/*.pid'" % (username,username))
-os.system("su %s -c 'rm /home/%s/.vnc/*.log'" % (username,username))
+vnc_home = "/home/%s/.vnc" % username
+files = os.listdir(vnc_home)
+
+for file in files:
+    if file.endswith('.pid') or file.endswith('.log'):
+        filepath = "%s/%s" % (vnc_home, file)
+
+        print("Found pre-existing file %s, removing it" % filepath)
+
+        os.remove(filepath)
 
 # Set up VNC server & start desktop environment
 os.system("su %s -c 'vncserver $DISPLAY -geometry 1280x720 -depth 24'" % username)
 os.system("su %s -c 'startlxde &'" % username)
 
 # Capture pid of the vnc server
-vnc_home = "/home/%s/.vnc" % username
 files = os.listdir(vnc_home)
-
 vncserver_pid = -1
-
 for file in files:
     if file.endswith('.pid'):
         filepath = "%s/%s" % (vnc_home, file)
