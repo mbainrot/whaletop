@@ -311,6 +311,20 @@ else:
     
     os.system("su %s -c 'websockify --web=/usr/share/novnc/ --cert='%s' --key='%s' --ssl-only $NOVNC_PORT localhost:$VNC_PORT &'" % (username, pemPath, pemPath))
 
+# Grab the websockify process id for health checking
+websockify_pid = -1
+
+for proc in psutil.process_iter():
+    if proc.name() == "websockify":
+        if websockify_pid == -1:
+            websockify_pid = proc.pid
+        else:
+            raise Exception("Found more than one websockify!!")
+
+if websockify_pid == -1:
+    raise Exception("Websockify failed to start")
+else:
+    print("Found websockify running on pid %s" % websockify_pid)
 
 # Report end of start up sequence
 with open('/opt/whaletop/status','w') as f:
@@ -318,12 +332,31 @@ with open('/opt/whaletop/status','w') as f:
 
 while True:
     VNC_SERVER_OK = False
+    WEBSOCKIFY_OK = False
     CERTIFICATE_OK = False
 
     # Check that VNC server is still running
     if psutil.pid_exists(vncserver_pid) == True:
-        VNC_SERVER_OK = True
-    
+        proc = psutil.Process(pid=vncserver_pid)
+ 
+        if proc.is_running() == True and proc.status() != psutil.STATUS_ZOMBIE:
+            VNC_SERVER_OK = True
+        else:
+            print("VNC Server is not OK!!! (is_running: %s, status: %s)" % (proc.is_running(), proc.status()))
+    else:
+        print("VNC Server PID no longer exists")
+
+    # Check that Websockify is still running
+    if psutil.pid_exists(websockify_pid) == True:
+        proc = psutil.Process(pid=websockify_pid)
+ 
+        if proc.is_running() == True and proc.status() != psutil.STATUS_ZOMBIE:
+            WEBSOCKIFY_OK = True
+        else:
+            print("Websockify is not OK!!! (is_running: %s, status: %s)" % (proc.is_running(), proc.status()))
+    else:
+        print("Websockify PID no longer exists")
+
     # Check that certificate hasn't expired
     if args.enable_tls == True:
         pemPath = "/home/%s/.vnc/tls.pem" % username
@@ -333,10 +366,12 @@ while True:
             print("ERROR: Certificate has expired")
     
     # Update status file
-    if VNC_SERVER_OK == False or (CERTIFICATE_OK == False and args.enable_tls == True):
+    if VNC_SERVER_OK == False or WEBSOCKIFY_OK == False or (CERTIFICATE_OK == False and args.enable_tls == True):
         with open('/opt/whaletop/status','w') as f:
             f.write("UNHEALTHY")
         if args.no_exit_on_failure == False:
+            debug = (VNC_SERVER_OK, WEBSOCKIFY_OK, CERTIFICATE_OK, args.enable_tls)
+            print("Detected health issue; VNC_SERVER_OK = %s, WEBSOCKIFY_OK = %s, (CERTIFICATE_OK == %s and args.enable_tls == %s)" % debug)
             break
     else:
         with open('/opt/whaletop/status','w') as f:
