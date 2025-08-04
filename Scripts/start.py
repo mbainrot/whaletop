@@ -295,6 +295,9 @@ for file in files:
         with open(filepath, 'r') as f:
             vncserver_pid = int(f.readline().strip())
 
+if vncserver_pid == -1:
+    raise Exception("Could not find PID file for vncserver")
+
 print("detected vncserver pid of %s" % vncserver_pid)
 
 # Start websockify
