@@ -110,32 +110,49 @@ if args.no_sudo == False:
         f.write("%s ALL=(ALL) NOPASSWD: ALL" % username)
 
 # - Configure VNC Password
+password = None
 if args.vnc_password_from_env == False:
     # Randomly generate password
     letter_set = string.ascii_letters + string.digits
     password = ''.join(secrets.choice(letter_set) for i in range(20))
-
-    print("VNC Password = %s" % password)
-
-    with open('/opt/whaletop/vnc_passwd','w') as f:
-        f.write(password)
-
-    #! FIXME: needs error handling...
-    os.system("mkdir -p /home/%s/.vnc" % username)
-    os.system("echo '%s' | vncpasswd -f > /home/%s/.vnc/passwd" % (password, username))
-    os.system("chmod 600 /home/%s/.vnc/passwd" % username)
 else:
     if not "VNC_PASSWORD" in os.environ:
         raise Exception("Environment variable VNC_PASSWORD is not defined!")
 
     password = os.environ["VNC_PASSWORD"]
 
-    with open('/opt/whaletop/vnc_passwd','w') as f:
-        f.write(password)
+if password == None:
+    raise Exception("Failed to aquire a password for VNC")
 
-    os.system("mkdir -p /home/%s/.vnc" % username)
-    os.system("echo '%s' | vncpasswd -f > /home/%s/.vnc/passwd" % (password, username))
-    os.system("chmod 600 /home/%s/.vnc/passwd" % username)
+if password == '':
+    raise Exception("Password must not be blank")
+
+print("VNC Password = %s" % password)
+
+with open('/opt/whaletop/vnc_passwd','w') as f:
+    f.write(password)
+
+vncHome = "/home/%s/.vnc" % username
+passwdFile = "%s/passwd" % vncHome
+
+os.system("mkdir -p %s" % vncHome)
+
+if os.path.exists(vncHome) == False:
+    raise Exception("Failed to create %s" % vncHome)
+
+os.system("echo '%s' | vncpasswd -f > %s" % (password, passwdFile))
+
+if os.path.exists(passwdFile) == False:
+    raise Exception("Failed to set passwd file @ %s" % passwdFile)
+
+# Set permissions of the passwd file to 600 by just providing S_IRUSR (which is read by owner)
+# at time of writing this blanks all other permissions out
+os.chmod(passwdFile, os.path.stat.S_IRUSR)
+
+passwdFileStat = os.stat(passwdFile)
+
+if passwdFileStat.st_mode != 33024:
+    raise Exception("Incorrect permissions on %s (got %s, expected 33024)" % (passwdFile, passwdFileStat.st_mode))
 
 
 if args.enable_tls == True:
